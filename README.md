@@ -1,52 +1,56 @@
 -- Configurações da bomba
 local bombSize = 1000
-local explosionSize = 5000 -- Ajuste o tamanho da explosão
-local damage = 100 -- Ajuste o dano da explosão
-local explosionPressure = 200000 -- Ajuste a força da explosão
+local explosionSize = 20000 -- Aumentei bastante o raio da explosão
+local damage = 99999 -- Dano massivo para eliminar jogadores
+local explosionPressure = 500000 -- Mantendo uma pressão alta
+local destroyRadiusPercent = 100 -- Para garantir que partes sejam destruídas
 
 -- Cria a Part da bomba
 local bombPart = Instance.new("Part")
-bombPart.Name = "BombaInstantanea"
+bombPart.Name = "BombaGlobal"
 bombPart.Size = Vector3.new(bombSize, bombSize, bombSize)
-bombPart.Anchored = false -- Para que possa cair e tocar em coisas
+bombPart.Anchored = false -- Para que possa cair
 bombPart.CanCollide = true
-bombPart.Position = Vector3.new(0, 5000 + bombSize/2, 0) -- Spawn um pouco acima para cair
-bombPart.Shape = Enum.PartType.Ball -- Formato de bola para melhor detecção de colisão
-bombPart.Color = Color3.fromRGB(255, 0, 0) -- Cor vermelha para indicar perigo
-bombPart.Material = Enum.Material.Neon -- Material brilhante
+bombPart.Position = Vector3.new(0, 5000 + bombSize/2, 0) -- Spawn um pouco acima
+bombPart.Shape = Enum.PartType.Ball
+bombPart.Color = Color3.fromRGB(255, 0, 0)
+bombPart.Material = Enum.Material.Neon
 
 -- Cria um script dentro da bomba
 local explodeScript = Instance.new("Script")
 explodeScript.Parent = bombPart
-explodeScript.Name = "ExplodirAoTocar"
+explodeScript.Name = "ExplodirAoTocarChao"
 
--- Função para criar a explosão
-local function detonate()
+-- Função para criar a explosão global
+local function detonateGlobal()
     local explosion = Instance.new("Explosion")
     explosion.Position = bombPart.Position
     explosion.BlastRadius = explosionSize
     explosion.BlastPressure = explosionPressure
-    explosion.DestroyJointRadiusPercent = 0 -- Evita destruir juntas
+    explosion.DestroyJointRadiusPercent = destroyRadiusPercent
     explosion.Parent = workspace
 
-    -- Lida com o dano aos Humanoids
-    explosion.Hit:Connect(function(hitPart)
-        local character = hitPart.Parent
-        local humanoid = character:FindFirstChild("Humanoid")
-        if humanoid and humanoid.Health > 0 then
-            humanoid.Health -= damage
+    -- Itera por todos os personagens jogadores no servidor e aplica dano
+    for i, player in pairs(game.Players:GetPlayers()) do
+        local character = player.Character
+        if character and character:FindFirstChild("Humanoid") then
+            local humanoid = character:FindFirstChild("Humanoid")
+            if humanoid and humanoid.Health > 0 then
+                humanoid.Health -= damage
+            end
         end
-    end)
+    end
 
-    -- Destrói a bomba após a explosão
+    -- Destrói a bomba e o script
     bombPart:Destroy()
-    explodeScript:Destroy() -- Limpa o script também
+    explodeScript:Destroy()
 end
 
--- Conecta o evento Touched para detectar colisões
+-- Conecta o evento Touched para detectar a colisão com o chão
 bombPart.Touched:Connect(function(otherPart)
-    if otherPart and otherPart.Parent ~= bombPart then -- Garante que não está colidindo consigo mesma
-        detonate()
+    -- Verifica se a parte tocada é considerada o chão (BasePlate ou Floor - você pode adicionar mais)
+    if otherPart.Name == "BasePlate" or otherPart.Name == "Floor" then
+        detonateGlobal()
     end
 end)
 
